@@ -1,0 +1,223 @@
+nameOverride: ''
+image:
+  registry: docker.io
+  pullPolicy: IfNotPresent
+  app:
+    registry: null
+    imageLocation: null
+    tag: ''
+    pullPolicy: null
+imagePullSecrets: []
+env:
+  type: ''
+  label: ''
+datasource:
+  user: ''
+  serverName: ''
+  databaseName: ''
+  portNumber: ''
+  currentSchema: ''
+  globalSchemaPrefix: wo
+  connTimeout: 60000
+  maxPoolSize: 2
+  minIdle: 0
+  idleTimeout: 120000
+  connectionParams: {}
+members:
+- businessUnit: ''
+  applicationMember: ''
+  memberSign: ''
+  datasource:
+    globalSchema: false
+kafka:
+  user: ''
+  servers: ''
+  saslMechanism: PLAIN
+  securityProtocol: SASL_SSL
+  sslEndpointIdentAlg: HTTPS
+  schemaRegistry:
+    credSource: USER_INFO
+    user: ''
+    url: ''
+  topics:
+    updatecasestatus:
+      name: gw.cgdev.x.ccms.evt.gsfupdatecasestatus.01
+      consumerGroup: gw.cgdev.ccms.gsfcore.gsfupdatecasestatus
+atomikos:
+  borrowConnectionTimeout: ''
+  maxIdleTime: ''
+  maxLifetime: ''
+  maxPoolSize: ''
+  minPoolSize: ''
+  jtaTimeout: ''
+  connectionFactory:
+    maxIdleTime: ''
+    maxLifeTime: ''
+    maxPoolSize: ''
+    minPoolSize: ''
+ibmMq:
+  queueManager: ''
+  connName: ''
+  user: ''
+  pega: 
+    queueName: ''
+keda:
+  enabled: false
+oauth2:
+  enabled: false
+  resourceUri: ''
+  authorizationPrefix: ''
+request:
+  sanitization:
+    enabled: true
+response:
+  encoding:
+    enabled: false
+timezone: ''
+secret:
+  decryptionKey: ''
+  datasourcePassword: ''
+  kafkaPassword: ''
+  kafkaSchemaRegistryPassword: ''
+  trustStorePassword: ''
+  keyStorePassword: ''
+  ibmMqPassword: ''
+logger:
+  format: STRING
+  level:
+    health: DEBUG
+    kafka: DEBUG
+    kafkaCore: INFO
+    rest: DEBUG
+    database: ERROR
+    databaseSql: DEBUG
+    databaseBind: TRACE
+    databaseExtract: TRACE
+    databaseSlowQuery: INFO
+    businessLogic: DEBUG
+    general: DEBUG
+  logToFile: false
+  rollingFileAppender: false
+  logDir: /var/log/app
+  logDirMount:
+    enabled: false
+  microserviceTag: 'GSFCOR'
+  databaseSlowQueryThreshold: 0
+healthStatusDownReturnCode: '418'
+javaOpts: -Xms256M -Xmx256M
+springActiveProfile: prod
+podAnnotations: {}
+deploymentAnnotations: {}
+serviceAnnotations: {}
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+securityContext: {}
+service:
+  enabled: true
+  type: ClusterIP
+  port: 8443
+  nodePort: ''
+  clusterIP: ''
+  loadBalancerIP: ''
+  loadBalancerSourceRanges: []
+  annotations: {}
+  labels: {}
+ingress:
+  enabled: false
+  className: ''
+  annotations: {}
+  hosts: []
+  tls: []
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 50m
+    memory: 512Mi
+initContainers: []
+nodeSelector: {}
+tolerations: []
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/arch
+          operator: In
+          values:
+          - amd64
+        - key: kubernetes.io/os
+          operator: In
+          values:
+          - linux
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app
+            operator: In
+            values:
+            - gsf-core
+        topologyKey: kubernetes.io/hostname
+deployment:
+  replicaCount: 1
+  annotations: {}
+  labels: {}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 60
+  terminationGracePeriodSeconds: 60
+  restartPolicy: Always
+  readinessProbe:
+    initialDelaySeconds: 10
+    periodSeconds: 60
+    timeoutSeconds: 10
+    successThreshold: 1
+    failureThreshold: 2
+    httpGet:
+      path: /health/readiness
+      port: http
+      scheme: HTTPS
+  livenessProbe:
+    initialDelaySeconds: 60
+    periodSeconds: 60
+    timeoutSeconds: 10
+    failureThreshold: 3
+    httpGet:
+      path: /health/liveness
+      port: http
+      scheme: HTTPS
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+mountServerCertFromSecret:
+  enabled: false
+  secretName: ''
+  certPath: ''
+  keyPath: ''
+mountKeyStoreFromSecret:
+  enabled: false
+  secretName: ''
+  keyStoreName: ''
+  keyStoreType: JKS
+mountTrustStoreFromSecret:
+  enabled: false
+  secretName: ''
+  trustStoreName: ''
+  trustStoreType: JKS
+mountCaFromSecret:
+  enabled: false
+  secretName: ''
+customVolumes: []
+customMounts: []
+customEnv: []

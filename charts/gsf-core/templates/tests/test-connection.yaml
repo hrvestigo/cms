@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "gsf-core.name" . }}-test-connection"
+  labels:
+    {{- include "gsf-core.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: curl
+      image: alpine
+      command:
+        - 'bash'
+        - -c
+        - 'apk add curl && curl -k https://{{ include "gsf-core.name" . }}:{{ .Values.service.port }}/health/liveness'
+  restartPolicy: Never

@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="warn">
+  {{- with .Values.logger }}
+  <Properties>
+    {{- if .logToFile }}
+    <Property name="folder">{{ .logDir }}</Property>
+    <Property name="fileName">application.log</Property>
+    <Property name="fileNameTomcat">messages.log</Property>
+    <Property name="fileNameHealth">health.log</Property>
+    {{- end }}
+    <Property name="microserviceTag">{{ .microserviceTag }}</Property>
+    <Property name="defaultPattern">[%d] [%X{correlationId}] %repeat{${microserviceTag}}{1} %p %c{1.} %replace{%m}{[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{4}[0-9]{7}([a-zA-Z0-9]?){0,16}}{*****}%n</Property>
+    <Property name="healthPattern">[%d] [%X{correlationId}] %m%n</Property>
+    <Property name="jsonTimestampFieldValue">{"$resolver": "timestamp", "pattern": {"format": "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS'Z'","timeZone": "UTC"}}</Property>
+
+    <Property name="applicationAppender">Application</Property>
+    <Property name="tomcatAppender">Tomcat</Property>
+    <Property name="healthAppender">Health</Property>
+    <Property name="consoleAppender">Console</Property>
+  </Properties>
+
+  <Appenders>
+    <Console name="${consoleAppender}" target="SYSTEM_OUT">
+      {{- if eq "ECS" .format }}
+      <JsonTemplateLayout eventTemplateUri="classpath:EcsLayout.json">
+        <EventTemplateAdditionalField
+          key="@timestamp"
+          format="JSON"
+          value="${jsonTimestampFieldValue}"/>
+      </JsonTemplateLayout>
+      {{- else if eq "LOGSTASH" .format }}
+      <JsonTemplateLayout eventTemplateUri="classpath:LogstashJsonEventLayoutV1.json">
+        <EventTemplateAdditionalField
+          key="@timestamp"
+          format="JSON"
+          value="${jsonTimestampFieldValue}"/>
+      </JsonTemplateLayout>
+      {{- else if eq "GELF" .format }}
+      <JsonTemplateLayout eventTemplateUri="classpath:GelfLayout.json">
+      </JsonTemplateLayout>
+      {{- else if eq "GCP" .format }}
+      <JsonTemplateLayout eventTemplateUri="classpath:GcpLayout.json">
+        <EventTemplateAdditionalField
+          key="timestamp"
+          format="JSON"
+          value="${jsonTimestampFieldValue}"/>
+      </JsonTemplateLayout>
+      {{- else }}
+      <PatternLayout pattern="${defaultPattern}"/>
+      {{- end }}
+    </Console>
+
+    {{- if and .logToFile .rollingFileAppender }}
+    <RollingFile name="${applicationAppender}" fileName="${folder}/${fileName}" filePattern="${folder}/${fileName}-%d{MM-dd-yyyy}.log">
+      <PatternLayout>
+        <Pattern>${defaultPattern}</Pattern>
+      </PatternLayout>
+      <Policies>
+        <TimeBasedTriggeringPolicy/>
+        <SizeBasedTriggeringPolicy size="100 MB"/>
+      </Policies>
+      <DefaultRolloverStrategy max="1000"/>
+    </RollingFile>
+
+    <RollingFile name="${tomcatAppender}" fileName="${folder}/${fileNameTomcat}" filePattern="${folder}/${fileNameTomcat}-%d{MM-dd-yyyy}.log">
+      <PatternLayout>
+        <Pattern>${defaultPattern}</Pattern>
+      </PatternLayout>
+      <Policies>
+        <TimeBasedTriggeringPolicy/>
+        <SizeBasedTriggeringPolicy size="100 MB"/>
+      </Policies>
+      <DefaultRolloverStrategy max="1000"/>
+    </RollingFile>
+
+    <RollingFile name="${healthAppender}" fileName="${folder}/${fileNameHealth}" filePattern="${folder}/${fileNameHealth}-%d{MM-dd-yyyy}.log">
+      <PatternLayout>
+        <Pattern>${healthPattern}</Pattern>
+      </PatternLayout>
+      <Policies>
+        <TimeBasedTriggeringPolicy/>
+        <SizeBasedTriggeringPolicy size="100 MB"/>
+      </Policies>
+      <DefaultRolloverStrategy max="1000"/>
+    </RollingFile>
+
+    {{- else if .logToFile }}
+
+    <File name="${applicationAppender}" fileName="${folder}/${fileName}">
+      <PatternLayout>
+        <Pattern>${defaultPattern}</Pattern>
+      </PatternLayout>
+    </File>
+
+    <File name="${tomcatAppender}" fileName="${folder}/${fileNameTomcat}">
+      <PatternLayout>
+        <Pattern>${defaultPattern}</Pattern>
+      </PatternLayout>
+    </File>
+
+    <File name="${healthAppender}" fileName="${folder}/${fileNameHealth}">
+      <PatternLayout>
+        <Pattern>${healthPattern}</Pattern>
+      </PatternLayout>
+    </File>
+    {{- end }}
+  </Appenders>
+
+  <Loggers>
+    <Logger name="hr.vestigo" level={{ .level.businessLogic | upper | quote }} additivity="false">
+      {{- if .logToFile }}
+      <AppenderRef ref="${applicationAppender}"/>
+      {{- end }}
+      <AppenderRef ref="${consoleAppender}"/>
+    </Logger>
+
+    <Logger name="hr.vestigo.springtemplate.app.logging.HttpRequestAndResponseLoggingFilter" level={{ .level.rest | upper | quote }} additivity="false">
+      {{- if .logToFile }}
+      <AppenderRef ref="${applicationAppender}"/>
+      {{- end }}
+      <AppenderRef ref="${consoleAppender}"/>
+    </Logger>
+
+    <Logger name="org.apache" level={{ .level.kafkaCore | upper | quote }} additivity="false">
+      {{- if .logToFile }}
+      <AppenderRef ref="${tomcatAppender}"/>
+      {{- end }}
+      <AppenderRef ref="${consoleAppender}"/>
+    </Logger>
+
+    <Logger name="org.apache.kafka" level={{ .level.kafkaCore | upper | quote }} additivity="false">
+      {{- if .logToFile }}
+      <AppenderRef ref="${applicationAppender}"/>
+      {{- end }}
+      <AppenderRef ref="${consoleAppender}"/>
+    </Logger>
+
+    <Logger name="org.hibernate" level={{ .level.database | upper | quote }} additivity="false">
+      {{- if .logToFile }}
+      <AppenderRef ref="${applicationAppender}"/>
+      {{- end }}
+      <AppenderRef ref="${consoleAppender}"/>
+    </Logger>
+
+    <Logger name="org.hibernate.SQL" level={{ .level.databaseSql | upper | quote }} additivity="false">
+      {{- if .logToFile }}
+      <AppenderRef ref="${applicationAppender}"/>
+      {{- end }}
+      <AppenderRef ref="${consoleAppender}"/>
+    </Logger>
+
+    <Logger name="org.hibernate.orm.jdbc.bind" level={{ .level.databaseBind | upper | quote }} additivity="false">
+      {{- if .logToFile }}
+      <AppenderRef ref="${applicationAppender}"/>
+      {{- end }}
+      <AppenderRef ref="${consoleAppender}"/>
+    </Logger>
+
+    <Logger name="org.hibernate.orm.jdbc.extract" level={{ .level.databaseExtract | upper | quote }} additivity="false">
+      {{- if .logToFile }}
+      <AppenderRef ref="${applicationAppender}"/>
+      {{- end }}
+      <AppenderRef ref="${consoleAppender}"/>
+    </Logger>
+
+    <Logger name="org.hibernate.SQL_SLOW" level={{ .level.databaseSlowQuery | upper | quote }} additivity="false">
+      {{- if .logToFile }}
+      <AppenderRef ref="${applicationAppender}"/>
+      {{- end }}
+      <AppenderRef ref="${consoleAppender}"/>
+    </Logger>
+
+    <Logger name="org.springframework" level={{ .level.general | upper | quote }} additivity="false">
+      {{- if .logToFile }}
+      <AppenderRef ref="${applicationAppender}"/>
+      {{- end }}
+      <AppenderRef ref="${consoleAppender}"/>
+    </Logger>
+
+    <Logger name="org.springframework.kafka" level={{ .level.kafka | upper | quote }} additivity="false">
+      {{- if .logToFile }}
+      <AppenderRef ref="${applicationAppender}"/>
+      {{- end }}
+      <AppenderRef ref="${consoleAppender}"/>
+    </Logger>
+
+    <Logger name="hr.vestigo.springtemplate.kafka" level={{ .level.kafka | upper | quote }} additivity="false">
+      {{- if .logToFile }}
+      <AppenderRef ref="${applicationAppender}"/>
+      {{- end }}
+      <AppenderRef ref="${consoleAppender}"/>
+    </Logger>
+
+    <Logger name="org.springframework.orm.jpa" level={{ .level.database | upper | quote }} additivity="false">
+      {{- if .logToFile }}
+      <AppenderRef ref="${applicationAppender}"/>
+      {{- end }}
+      <AppenderRef ref="${consoleAppender}"/>
+    </Logger>
+
+    <Logger name="org.springframework.jdbc" level={{ .level.database | upper | quote }} additivity="false">
+      {{- if .logToFile }}
+      <AppenderRef ref="${applicationAppender}"/>
+      {{- end }}
+      <AppenderRef ref="${consoleAppender}"/>
+    </Logger>
+
+    <Logger name="org.springframework.boot.autoconfigure" level={{ .level.general | upper | quote }} additivity="false">
+      {{- if .logToFile }}
+      <AppenderRef ref="${applicationAppender}"/>
+      {{- end }}
+      <AppenderRef ref="${consoleAppender}"/>
+    </Logger>
+
+    <Logger name="org.springframework.kafka.listener" level={{ .level.general | upper | quote }} additivity="false">
+      {{- if .logToFile }}
+      <AppenderRef ref="${applicationAppender}"/>
+      {{- end }}
+      <AppenderRef ref="${consoleAppender}"/>
+      <Filters>
+        <RegexFilter regex="^(Commit list: \{\}|Received: 0 records)$" onMatch="DENY" onMismatch="ACCEPT" />
+      </Filters>
+    </Logger>
+
+    <Logger name="com.zaxxer.hikari.pool.HikariPool" level={{ .level.database | upper | quote }} additivity="false">
+      {{- if .logToFile }}
+      <AppenderRef ref="${applicationAppender}"/>
+      {{- end }}
+      <AppenderRef ref="${consoleAppender}"/>
+      <Filters>
+        <ThresholdFilter level="DEBUG" onMatch="NEUTRAL" onMismatch="DENY"/>
+        <RegexFilter regex="^HikariPool.*" onMatch="DENY" onMismatch="ACCEPT"/>
+      </Filters>
+    </Logger>
+
+    {{- if .logToFile }}
+    <Logger name="hr.vestigo.springtemplate.app.logging.AccessLogFilter" level={{ .level.health | upper | quote }} additivity="false">
+      <AppenderRef ref="${healthAppender}"/>
+    </Logger>
+    {{- else }}
+    <Logger name="hr.vestigo.springtemplate.app.logging.AccessLogFilter" level={{ .level.health | upper | quote }} additivity="false">
+      <AppenderRef ref="${consoleAppender}"/>
+    </Logger>
+    {{- end }}
+
+    <Root level="INFO">
+      <AppenderRef ref="${consoleAppender}"/>
+      {{- if .logToFile }}
+      <AppenderRef ref="${applicationAppender}"/>
+      {{- end }}
+    </Root>
+  </Loggers>
+  {{- end }}
+</Configuration>

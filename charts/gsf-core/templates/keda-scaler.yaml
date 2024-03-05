@@ -1,0 +1,31 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: gsf-core
+  namespace: {{ .Release.Namespace }}
+spec:
+  scaleTargetRef:
+    name: gsf-core
+  cooldownPeriod: 300
+  maxReplicaCount: 1
+  fallback:
+    failureThreshold: 3
+    replicas: 1
+  triggers:
+  - type: kafka
+    metadata:
+      bootstrapServers: {{ .Values.kafka.servers }}
+      consumerGroup: {{ .Values.kafka.topics.updatecasestatus.consumerGroup }}
+      topic: {{ .Values.kafka.topics.updatecasestatus.name }}
+      lagThreshold: '1'
+      activationLagTreshold: '1'
+      unsafeSsl: 'true'
+      scaleToZeroOnInvalidOffset: 'true'
+    authenticationRef:
+      name: keda-kafka-cred
+  - type: prometheus
+    metadata:
+      serverAddress: http://prometheus-kube-prometheus-prometheus.monitor:9090
+      query: sum by(container) (increase(spring_kafka_listener_seconds_count{namespace="{{ .Release.Namespace }}", container="gsf-core"}[1m]))
+      threshold: '1'
+      activationThreshold: '1'

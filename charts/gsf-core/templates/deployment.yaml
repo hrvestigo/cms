@@ -1,0 +1,266 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gsf-core.name" . }}
+  labels:
+    {{- include "gsf-core.labels" . | nindent 4 }}
+{{- with .Values.deployment.annotations }}
+  annotations:
+{{ toYaml . | indent 4 }}
+{{- end }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.deployment.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "gsf-core.selectorLabels" . | nindent 6 }}
+  strategy:
+    {{- toYaml .Values.deployment.strategy | nindent 4 }}
+  minReadySeconds: {{ .Values.deployment.minReadySeconds }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "gsf-core.selectorLabels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      terminationGracePeriodSeconds: {{ .Values.deployment.terminationGracePeriodSeconds }}
+      restartPolicy: {{ .Values.deployment.restartPolicy }}
+      initContainers:
+        {{- with .Values.initContainers }}
+        {{- toYaml . | trim | nindent 8 }}
+        {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "gsf-core.app.repository" . }}:{{ .Values.image.app.tag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ include "gsf-core.app.imagePullPolicy" . }}
+          env:
+            {{- if .Values.timezone }}
+            - name: TZ
+              value: {{ .Values.timezone }}
+            {{- end }}
+            - name: SERVER_PORT
+              value: "8443"
+            - name: ATOMIKOS_PROPERTIES_LOGBASEDIR
+              value: /var/log/app
+            - name: SPRING_DATASOURCE_XA_PROPERTIES_USER
+              value: {{ required "Please specify DB user in members.datasource.user" .Values.datasource.user | quote }}
+            - name: SPRING_DATASOURCE_XA_PROPERTIES_SERVERNAME
+              value: {{ required "Please specify DB server name in datasource.serverName" .Values.datasource.serverName | quote }}
+            - name: SPRING_DATASOURCE_XA_PROPERTIES_DATABASENAME
+              value: {{ required "Please specify DB database name in datasource.databaseName" .Values.datasource.databaseName | quote }}
+            - name: SPRING_DATASOURCE_XA_PROPERTIES_PORTNUMBER
+              value: {{ required "Please specify DB port number in datasource.portNumber" .Values.datasource.portNumber | quote }}
+            - name: SPRING_DATASOURCE_XA_PROPERTIES_CURRENTSCHEMA
+              value: {{ required "Please specify DB current schema in datasource.currentSchema" .Values.datasource.currentSchema | quote }}
+            {{- range $k, $v := .Values.members }}
+            - name: SPRING_DATASOURCE_XA_PROPERTIES_USER_{{ .memberSign }}
+              value: {{ required "Please specify DB user in datasource.user" $.Values.datasource.user | quote }}
+            - name: SPRING_DATASOURCE_XA_PROPERTIES_SERVERNAME_{{ .memberSign }}
+              value: {{ required "Please specify DB server name in datasource.serverName" $.Values.datasource.serverName | quote }}
+            - name: SPRING_DATASOURCE_XA_PROPERTIES_DATABASENAME_{{ .memberSign }}
+              value: {{ required "Please specify DB database name in datasource.databaseName" $.Values.datasource.databaseName | quote }}
+            - name: SPRING_DATASOURCE_XA_PROPERTIES_PORTNUMBER_{{ .memberSign }}
+              value: {{ required "Please specify DB port number in datasource.portNumber" $.Values.datasource.portNumber | quote }}
+            - name: SPRING_DATASOURCE_XA_PROPERTIES_CURRENTSCHEMA_{{ .memberSign }}
+              value: {{ required "Please specify DB current schema in datasource.currentSchema" $.Values.datasource.currentSchema | quote }}
+            {{- end }}
+            - name: SPRING_JTA_ATOMIKOS_DATASOURCE_BORROWCONNECTIONTIMEOUT
+              value: {{ required "Please specify Atomikos borrowConnectionTimeout in atomikos.borrowConnectionTimeout" .Values.atomikos.borrowConnectionTimeout | quote }}            
+            - name: SPRING_JTA_ATOMIKOS_DATASOURCE_MAXIDLETIME
+              value: {{ required "Please specify Atomikos maxIdleTime in atomikos.maxIdleTime" .Values.atomikos.maxIdleTime | quote }}          
+            - name: SPRING_JTA_ATOMIKOS_DATASOURCE_MAXLIFETIME
+              value: {{ required "Please specify Atomikos maxLifetime in atomikos.maxLifetime" .Values.atomikos.maxLifetime | quote }}            
+            - name: SPRING_JTA_ATOMIKOS_DATASOURCE_MAXPOOLSIZE
+              value: {{ required "Please specify Atomikos maxPoolSize in atomikos.maxPoolSize" .Values.atomikos.maxPoolSize | quote }}
+            - name: SPRING_JTA_ATOMIKOS_DATASOURCE_MINPOOLSIZE
+              value: {{ required "Please specify Atomikos minPoolSize in atomikos.minPoolSize" .Values.atomikos.minPoolSize | quote }}
+            - name: SPRING_JTA_ATOMIKOS_PROPERTIES_DEFAULTJTATIMEOUT
+              value: {{ required "Please specify Atomikos jtaTimeout in atomikos.jtaTimeout" .Values.atomikos.jtaTimeout | quote }}
+            - name: SPRING_JTA_ATOMIKOS_CONNECTIONFACTORY_MAXIDLETIME
+              value: {{ required "Please specify Atomikos connectionFactory maxIdleTime in atomikos.connectionFactory.maxIdleTime" .Values.atomikos.connectionFactory.maxIdleTime | quote }}
+            - name: SPRING_JTA_ATOMIKOS_CONNECTIONFACTORY_MAXLIFETIME
+              value: {{ required "Please specify Atomikos connectionFactory maxLifeTime in atomikos.connectionFactory.maxLifeTime" .Values.atomikos.connectionFactory.maxLifeTime | quote }}
+            - name: SPRING_JTA_ATOMIKOS_CONNECTIONFACTORY_MAXPOOLSIZE
+              value: {{ required "Please specify Atomikos connectionFactory maxPoolSize in atomikos.connectionFactory.maxPoolSize" .Values.atomikos.connectionFactory.maxPoolSize | quote }}
+            - name: SPRING_JTA_ATOMIKOS_CONNECTIONFACTORY_MINPOOLSIZE
+              value: {{ required "Please specify Atomikos connectionFactory minPoolSize in atomikos.connectionFactory.minPoolSize" .Values.atomikos.connectionFactory.minPoolSize | quote }}
+            - name: KAFKA_TOPIC_UPDATECASESTATUS_NAME
+              value: {{ required "Please specify Kafka Topic Name in kafka.topics.updatecasestatus.name" .Values.kafka.topics.updatecasestatus.name | quote }}
+            - name: KAFKA_CONSUMER_GROUP_UPDATECASESTATUS_NAME
+              value: {{ required "Please specify Kafka Consumer Group in kafka.topics.updatecasestatus.consumerGroup" .Values.kafka.topics.updatecasestatus.consumerGroup | quote }}
+            - name: IBM_MQ_QUEUEMANAGER
+              value: {{ required "Please specify IBM MQ borrowConnectionTimeout in ibmMq.queueManager" .Values.ibmMq.queueManager | quote }}
+            - name: IBM_MQ_CHANNEL
+              value: QM.CHANNEL
+            - name: IBM_MQ_CONNNAME
+              value: {{ required "Please specify IBM MQ connName in ibmMq.connName" .Values.ibmMq.connName | quote }}
+            - name: IBM_MQ_USER
+              value: {{ required "Please specify IBM MQ user in ibmMq.user" .Values.ibmMq.user | quote }}
+            - name: IBM_MQ_PEGA_QUEUENAME
+              value: {{ required "Please specify IBM MQ Pega queueName in ibmMq.pega.queueName" .Values.ibmMq.pega.queueName | quote }}
+            - name: MEMBERS
+              value: {{ include "gsf-core.members" . }}
+            - name: SPRING_KAFKA_PROPERTIES_SASL_MECHANISM
+              value: {{ .Values.kafka.saslMechanism | quote }}
+            - name: SPRING_KAFKA_PROPERTIES_SASL_JAAS_CONFIG
+              value: >-
+                org.apache.kafka.common.security.plain.PlainLoginModule required username=
+                {{- required "Please specify Kafka user in kafka.user" .Values.kafka.user | quote }} password="${kafka.password}";
+            - name: SPRING_KAFKA_PROPERTIES_BOOTSTRAP_SERVERS
+              value: {{ required "Please specify Kafka bootstrap servers in kafka.servers" .Values.kafka.servers | quote }}
+            - name: SPRING_KAFKA_PROPERTIES_SECURITY_PROTOCOL
+              value: {{ .Values.kafka.securityProtocol | quote }}
+            - name: SPRING_KAFKA_PROPERTIES_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM
+              value: {{ .Values.kafka.sslEndpointIdentAlg | quote }}
+            - name: SPRING_KAFKA_PROPERTIES_BASIC_AUTH_CREDENTIALS_SOURCE
+              value: {{ .Values.kafka.schemaRegistry.credSource | quote }}
+            - name: SPRING_KAFKA_PROPERTIES_SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO
+              value: >-
+                {{ required "Please specify Kafka Schema Registry user in kafka.schemaRegistry.user" .Values.kafka.schemaRegistry.user }}:${kafka.schemaregistry.password}
+            - name: SPRING_KAFKA_PROPERTIES_SCHEMA_REGISTRY_URL
+              value: {{ required "Please specify Kafka Schema Registry URL in kafka.schemaRegistry.url" .Values.kafka.schemaRegistry.url | quote }}
+            - name: SERVER_SSL_KEYSTORE
+              value: /tmp/tls.p12
+            - name: SERVER_SSL_KEYSTORETYPE
+              value: PKCS12
+            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+              value: loggers,health,prometheus
+            - name: MANAGEMENT_ENDPOINTS_LOGGERS_ENABLED
+              value: "true"
+            - name: MANAGEMENT_ENDPOINTS_WEB_BASEPATH
+              value: /
+            - name: MANAGEMENT_HEALTH_PROBES_ENABLED
+              value: "true"
+            - name: MANAGEMENT_ENDPOINT_HEALTH_SHOWDETAILS
+              value: always
+            - name: MANAGEMENT_ENDPOINT_HEALTH_STATUS_HTTPMAPPING_DOWN
+              value: {{ .Values.healthStatusDownReturnCode | quote }}
+            - name: MANAGEMENT_ENDPOINT_HEALTH_GROUP_READINESS_INCLUDE
+              value: readinessState, db, kafka
+            - name: SERVER_TOMCAT_ACCESSLOG_ENABLED
+              value: {{ .Values.logger.logToFile | quote }}
+            - name: SERVER_TOMCAT_ACCESSLOG_SUFFIX
+              value: ".log"
+            - name: SERVER_TOMCAT_ACCESSLOG_PREFIX
+              value: access
+            - name: SERVER_TOMCAT_BASEDIR
+              {{- $logdir := .Values.logger.logDir | splitList "/" }}
+              {{- if hasPrefix "/" .Values.logger.logDir }}
+              value: "/{{ index $logdir 1 }}"
+              {{- else }}
+              value: "/{{ index $logdir 0 }}"
+              {{- end }}
+            - name: SERVER_TOMCAT_ACCESSLOG_FILEDATEFORMAT
+              value: ""
+            - name: SERVER_TOMCAT_ACCESSLOG_DIRECTORY
+              {{- $logdir := .Values.logger.logDir | splitList "/" }}
+              {{- if hasPrefix "/" .Values.logger.logDir }}
+              {{- $rest := slice $logdir 2 | join "/" }}
+              value: {{ $rest }}
+              {{- else }}
+              {{- $rest := slice $logdir 1 | join "/" }}
+              value: {{ $rest }}
+              {{- end }}
+            - name: SERVER_TOMCAT_ACCESSLOG_PATTERN
+              value: >-
+                [%{yyyy-MM-dd HH:mm:ss.SSS}t] %h %l %u "%r" %s
+            - name: SERVER_TOMCAT_ACCESSLOG_CONDITIONUNLESS
+              value: access
+            - name: LOGGING_CONFIG
+              value: /usr/app/config/log4j2.xml
+            - name: LOGGER_EXCLUDE_ENDPOINTS
+              value: /, /health, /health/liveness, /health/readiness, /prometheus
+            - name: SPRING_DATASOURCE_HIKARI_CONNECTIONTIMEOUT
+              value: {{ .Values.datasource.connTimeout | quote }}
+            - name: SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE
+              value: {{ .Values.datasource.maxPoolSize | quote }}
+            - name: SPRING_DATASOURCE_HIKARI_MINIMUMIDLE
+              value: {{ .Values.datasource.minIdle | quote }}
+            - name: SPRING_DATASOURCE_HIKARI_IDLETIMEOUT
+              value: {{ .Values.datasource.idleTimeout | quote }}
+            {{- if .Values.logger.databaseSlowQueryThreshold }}
+            - name: SPRING_JPA_PROPERTIES_HIBERNATE_SESSION_EVENTS_LOG_LOG_QUERIES_SLOWER_THAN_MS
+              value: {{ .Values.logger.databaseSlowQueryThreshold | quote }}
+            {{- end }}
+            - name: SECRET_PROPERTIES
+              value: /mnt/k8s/secrets/password.conf
+            - name: KAFKA_HEALTH_ENABLED
+              value: "true"
+            - name: JAVA_OPTS
+              value: {{ .Values.javaOpts | quote }}
+            {{- if (include "gsf-core.trustStoreEnv" .) -}}
+            {{- include "gsf-core.trustStoreEnv" . | nindent 12 -}}
+            {{- end }}
+            {{- if .Values.mountKeyStoreFromSecret.enabled }}
+            - name: SERVER_SSL_KEY_STORE_FILE
+              value: {{ required "Please specify key store location in mountKeyStoreFromSecret.location" .Values.mountKeyStoreFromSecret.location }}/{{ required "Please specify key store file name in mountKeyStoreFromSecret.keyStoreName" .Values.mountKeyStoreFromSecret.keyStoreName }}
+            - name: SSL_KEY_STORE_TYPE
+              value: {{ required "Please specify key store type in mountKeyStoreFromSecret.keyStoreType" .Values.mountKeyStoreFromSecret.keyStoreType }}
+            {{- end }}
+            {{- if .Values.oauth2.enabled }}
+            - name: SECURITY_AUTHENTICATION
+              value: oauth2
+            - name: SECURITY_AUTHENTICATION_JWT_CONVERTER
+              value: realm
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUERURI
+              value: {{ required "Please specify oAuth2 resource URI in oauth2.resourceUri" .Values.oauth2.resourceUri | quote }}
+            {{- else }}
+            - name: SECURITY_AUTHENTICATION
+              value: none
+            - name: SECURITY_AUTHENTICATION_JWT_CONVERTER
+              value: ""
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUERURI
+              value: ""
+            {{- end }}
+            - name: REQUEST_BODY_SANITIZATION_ENABLED
+              value: {{ .Values.request.sanitization.enabled | default "true" | quote }}
+            - name: RESPONSE_BODY_ENCODING_ENABLED
+              value: {{ .Values.response.encoding.enabled | default "false" | quote }}
+            {{- if .Values.oauth2.authorizationPrefix }}
+            - name: SECURITY_AUTHENTICATION_CLAIM_PREFIX
+              value: {{ .Values.oauth2.authorizationPrefix | quote }}
+            {{- end }}
+            {{- with .Values.customEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: 8443
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.deployment.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.deployment.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            {{- include "gsf-core.mounts" . | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- include "gsf-core.volumes" . | nindent 8 }}

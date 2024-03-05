@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+data:
+  log4j2.xml: |-
+    {{- include "gsf-core.logger" . | nindent 4 }}
