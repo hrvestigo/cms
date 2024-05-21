@@ -13,13 +13,6 @@ Create chart name and version as used by the chart label.
 {{- end }}
 
 {{/*
-Defies fixed part of gsf-core datasource schema name
-*/}}
-{{- define "gsf-core.dbSchema" -}}
-{{- "schemaname" }}
-{{- end }}
-
-{{/*
 gsf-core image repository
 */}}
 {{- define "gsf-core.app.repository" -}}
@@ -78,6 +71,8 @@ Common labels
 helm.sh/chart: {{ include "gsf-core.chart" . }}
 app: {{ include "gsf-core.name" . }}
 project: CCMS
+STC: {{ .Values.deployment.labels.STC | quote }}
+env: {{ .Values.deployment.labels.env | quote }}
 managedByKeda: {{ .Values.keda.enabled | quote }}
 {{ include "gsf-core.selectorLabels" . }}
 {{- if .Chart.AppVersion }}

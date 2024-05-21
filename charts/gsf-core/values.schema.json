@@ -1,0 +1,141 @@
+{
+    "$schema": "https://json-schema.org/draft-07/schema#",
+    "properties": {
+      "datasource": {
+        "description": "Datasource properties",
+        "properties": {
+          "user": {
+            "type": "string"
+          },
+          "serverName": {
+            "type": "string"
+          },
+          "databaseName": {
+            "type": "string"
+          },
+          "portNumber": {
+            "type": "integer"
+          },
+          "globalSchema": {
+            "type": "boolean"
+          },
+          "globalSchemaValue": {
+            "type": "string"
+          }
+          ,"defaultSchemaValue": {
+            "type": "string"
+          },
+          "line": {
+            "type": "string"
+          },
+          "fixedSchemaSuffix": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+            "user",
+            "serverName",
+            "databaseName",
+            "portNumber",
+            "globalSchema",
+            "globalSchemaValue",
+            "line",
+            "fixedSchemaSuffix",
+            "defaultSchemaValue"
+        ]
+      },
+      "atomikos": {
+        "description": "Atomikos properties",
+        "properties": {
+          "borrowConnectionTimeout": {
+            "type": "integer"
+          },
+          "maxIdleTime": {
+            "type": "integer"
+          },
+          "maxLifetime": {
+            "type": "integer"
+          },
+          "maxPoolSize": {
+            "type": "integer"
+          },
+          "minPoolSize": {
+            "type": "integer"
+          },
+          "jtaTimeout": {
+            "type": "integer"
+          },
+          "connectionFactory": {
+            "description": "Atomikos connection factory properties",
+            "properties": {
+              "maxIdleTime": {
+                "type": "integer"
+              },
+              "maxLifeTime": {
+                "type": "integer"
+              },
+              "maxPoolSize": {
+                "type": "integer"
+              },
+              "minPoolSize": {
+                "type": "integer"
+              }
+            },
+            "type": "object",
+            "required": [
+                "maxIdleTime",
+                "maxLifeTime",
+                "maxPoolSize",
+                "minPoolSize"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+            "borrowConnectionTimeout",
+            "maxIdleTime",
+            "maxLifetime",
+            "maxPoolSize",
+            "minPoolSize",
+            "jtaTimeout"
+        ]
+      },"ibmMq": {
+        "description": "IBM MQ properties",
+        "properties": {
+          "queueManager": {
+            "type": "string"
+          },
+          "connName": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          },
+          "pega": {
+            "description": "MQ PEGA properties",
+            "properties": {
+              "queueName": {
+                "type": "string"
+              }
+            },
+            "type": "object",
+            "required": [
+                "queueName"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+            "queueManager",
+            "connName",
+            "user"
+        ]
+      }
+    },
+    "required": [
+      "datasource"
+    ],
+    "title": "Values",
+    "type": "object"
+  }

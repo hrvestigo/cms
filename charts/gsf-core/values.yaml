@@ -16,8 +16,11 @@ datasource:
   serverName: ''
   databaseName: ''
   portNumber: ''
-  currentSchema: ''
-  globalSchemaPrefix: wo
+  globalSchema: false
+  globalSchemaValue: ''
+  defaultSchemaValue: ''
+  line: ''
+  fixedSchemaSuffix: ''
   connTimeout: 60000
   maxPoolSize: 2
   minIdle: 0
@@ -27,8 +30,6 @@ members:
 - businessUnit: ''
   applicationMember: ''
   memberSign: ''
-  datasource:
-    globalSchema: false
 kafka:
   user: ''
   servers: ''
@@ -107,6 +108,7 @@ healthStatusDownReturnCode: '418'
 javaOpts: -Xms256M -Xmx256M
 springActiveProfile: prod
 podAnnotations: {}
+podLabels: {}
 deploymentAnnotations: {}
 serviceAnnotations: {}
 podSecurityContext:

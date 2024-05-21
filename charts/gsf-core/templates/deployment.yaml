@@ -4,6 +4,9 @@ metadata:
   name: {{ include "gsf-core.name" . }}
   labels:
     {{- include "gsf-core.labels" . | nindent 4 }}
+    {{- with .Values.deployment.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 {{- with .Values.deployment.annotations }}
   annotations:
 {{ toYaml . | indent 4 }}
@@ -28,6 +31,9 @@ spec:
         {{- end }}
       labels:
         {{- include "gsf-core.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       automountServiceAccountToken: false
       {{- with .Values.imagePullSecrets }}
@@ -58,61 +64,69 @@ spec:
             - name: ATOMIKOS_PROPERTIES_LOGBASEDIR
               value: /var/log/app
             - name: SPRING_DATASOURCE_XA_PROPERTIES_USER
-              value: {{ required "Please specify DB user in members.datasource.user" .Values.datasource.user | quote }}
+              value: {{ .Values.datasource.user | quote }}
             - name: SPRING_DATASOURCE_XA_PROPERTIES_SERVERNAME
-              value: {{ required "Please specify DB server name in datasource.serverName" .Values.datasource.serverName | quote }}
+              value: {{ .Values.datasource.serverName | quote }}
             - name: SPRING_DATASOURCE_XA_PROPERTIES_DATABASENAME
-              value: {{ required "Please specify DB database name in datasource.databaseName" .Values.datasource.databaseName | quote }}
+              value: {{ .Values.datasource.databaseName | quote }}
             - name: SPRING_DATASOURCE_XA_PROPERTIES_PORTNUMBER
-              value: {{ required "Please specify DB port number in datasource.portNumber" .Values.datasource.portNumber | quote }}
-            - name: SPRING_DATASOURCE_XA_PROPERTIES_CURRENTSCHEMA
-              value: {{ required "Please specify DB current schema in datasource.currentSchema" .Values.datasource.currentSchema | quote }}
+              value: {{ .Values.datasource.portNumber | quote }}
+            - name: SPRING_DATASOURCE_XA_PROPERTIES_CURRENTSCHEMA 
+              value: {{ .Values.datasource.defaultSchemaValue | quote }}
             {{- range $k, $v := .Values.members }}
+              {{- $schemaValue := "" }}
+              {{- if $.Values.datasource }}
+                {{- if $.Values.datasource.globalSchema }}
+                  {{- $schemaValue = printf "%s%s%s%s" .businessUnit $.Values.datasource.globalSchemaPrefix $.Values.datasource.line $.Values.datasource.fixedSchemaSuffix }}
+                {{- else }}
+                  {{- $schemaValue = printf "%s%s%s%s" .businessUnit .applicationMember $.Values.datasource.line $.Values.datasource.fixedSchemaSuffix }}
+                {{- end }}
+              {{- end }}
             - name: SPRING_DATASOURCE_XA_PROPERTIES_USER_{{ .memberSign }}
-              value: {{ required "Please specify DB user in datasource.user" $.Values.datasource.user | quote }}
+              value: {{ $.Values.datasource.user | quote }}
             - name: SPRING_DATASOURCE_XA_PROPERTIES_SERVERNAME_{{ .memberSign }}
-              value: {{ required "Please specify DB server name in datasource.serverName" $.Values.datasource.serverName | quote }}
+              value: {{ $.Values.datasource.serverName | quote }}
             - name: SPRING_DATASOURCE_XA_PROPERTIES_DATABASENAME_{{ .memberSign }}
-              value: {{ required "Please specify DB database name in datasource.databaseName" $.Values.datasource.databaseName | quote }}
+              value: {{ $.Values.datasource.databaseName | quote }}
             - name: SPRING_DATASOURCE_XA_PROPERTIES_PORTNUMBER_{{ .memberSign }}
-              value: {{ required "Please specify DB port number in datasource.portNumber" $.Values.datasource.portNumber | quote }}
+              value: {{ $.Values.datasource.portNumber | quote }}
             - name: SPRING_DATASOURCE_XA_PROPERTIES_CURRENTSCHEMA_{{ .memberSign }}
-              value: {{ required "Please specify DB current schema in datasource.currentSchema" $.Values.datasource.currentSchema | quote }}
+              value: {{ $schemaValue | quote }}
             {{- end }}
             - name: SPRING_JTA_ATOMIKOS_DATASOURCE_BORROWCONNECTIONTIMEOUT
-              value: {{ required "Please specify Atomikos borrowConnectionTimeout in atomikos.borrowConnectionTimeout" .Values.atomikos.borrowConnectionTimeout | quote }}            
+              value: {{ .Values.atomikos.borrowConnectionTimeout | quote }}
             - name: SPRING_JTA_ATOMIKOS_DATASOURCE_MAXIDLETIME
-              value: {{ required "Please specify Atomikos maxIdleTime in atomikos.maxIdleTime" .Values.atomikos.maxIdleTime | quote }}          
+              value: {{ .Values.atomikos.maxIdleTime | quote }}
             - name: SPRING_JTA_ATOMIKOS_DATASOURCE_MAXLIFETIME
-              value: {{ required "Please specify Atomikos maxLifetime in atomikos.maxLifetime" .Values.atomikos.maxLifetime | quote }}            
+              value: {{ .Values.atomikos.maxLifetime | quote }}
             - name: SPRING_JTA_ATOMIKOS_DATASOURCE_MAXPOOLSIZE
-              value: {{ required "Please specify Atomikos maxPoolSize in atomikos.maxPoolSize" .Values.atomikos.maxPoolSize | quote }}
+              value: {{ .Values.atomikos.maxPoolSize | quote }}
             - name: SPRING_JTA_ATOMIKOS_DATASOURCE_MINPOOLSIZE
-              value: {{ required "Please specify Atomikos minPoolSize in atomikos.minPoolSize" .Values.atomikos.minPoolSize | quote }}
+              value: {{ .Values.atomikos.minPoolSize | quote }}
             - name: SPRING_JTA_ATOMIKOS_PROPERTIES_DEFAULTJTATIMEOUT
-              value: {{ required "Please specify Atomikos jtaTimeout in atomikos.jtaTimeout" .Values.atomikos.jtaTimeout | quote }}
+              value: {{ .Values.atomikos.jtaTimeout | quote }}
             - name: SPRING_JTA_ATOMIKOS_CONNECTIONFACTORY_MAXIDLETIME
-              value: {{ required "Please specify Atomikos connectionFactory maxIdleTime in atomikos.connectionFactory.maxIdleTime" .Values.atomikos.connectionFactory.maxIdleTime | quote }}
+              value: {{ .Values.atomikos.connectionFactory.maxIdleTime | quote }}
             - name: SPRING_JTA_ATOMIKOS_CONNECTIONFACTORY_MAXLIFETIME
-              value: {{ required "Please specify Atomikos connectionFactory maxLifeTime in atomikos.connectionFactory.maxLifeTime" .Values.atomikos.connectionFactory.maxLifeTime | quote }}
+              value: {{ .Values.atomikos.connectionFactory.maxLifeTime | quote }}
             - name: SPRING_JTA_ATOMIKOS_CONNECTIONFACTORY_MAXPOOLSIZE
-              value: {{ required "Please specify Atomikos connectionFactory maxPoolSize in atomikos.connectionFactory.maxPoolSize" .Values.atomikos.connectionFactory.maxPoolSize | quote }}
+              value: {{ .Values.atomikos.connectionFactory.maxPoolSize | quote }}
             - name: SPRING_JTA_ATOMIKOS_CONNECTIONFACTORY_MINPOOLSIZE
-              value: {{ required "Please specify Atomikos connectionFactory minPoolSize in atomikos.connectionFactory.minPoolSize" .Values.atomikos.connectionFactory.minPoolSize | quote }}
+              value: {{ .Values.atomikos.connectionFactory.minPoolSize | quote }}
             - name: KAFKA_TOPIC_UPDATECASESTATUS_NAME
-              value: {{ required "Please specify Kafka Topic Name in kafka.topics.updatecasestatus.name" .Values.kafka.topics.updatecasestatus.name | quote }}
+              value: {{ .Values.kafka.topics.updatecasestatus.name | quote }}
             - name: KAFKA_CONSUMER_GROUP_UPDATECASESTATUS_NAME
-              value: {{ required "Please specify Kafka Consumer Group in kafka.topics.updatecasestatus.consumerGroup" .Values.kafka.topics.updatecasestatus.consumerGroup | quote }}
+              value: {{ .Values.kafka.topics.updatecasestatus.consumerGroup | quote }}
             - name: IBM_MQ_QUEUEMANAGER
-              value: {{ required "Please specify IBM MQ borrowConnectionTimeout in ibmMq.queueManager" .Values.ibmMq.queueManager | quote }}
+              value: {{ .Values.ibmMq.queueManager | quote }}
             - name: IBM_MQ_CHANNEL
               value: QM.CHANNEL
             - name: IBM_MQ_CONNNAME
-              value: {{ required "Please specify IBM MQ connName in ibmMq.connName" .Values.ibmMq.connName | quote }}
+              value: {{ .Values.ibmMq.connName | quote }}
             - name: IBM_MQ_USER
-              value: {{ required "Please specify IBM MQ user in ibmMq.user" .Values.ibmMq.user | quote }}
+              value: {{ .Values.ibmMq.user | quote }}
             - name: IBM_MQ_PEGA_QUEUENAME
-              value: {{ required "Please specify IBM MQ Pega queueName in ibmMq.pega.queueName" .Values.ibmMq.pega.queueName | quote }}
+              value: {{ .Values.ibmMq.pega.queueName | quote }}
             - name: MEMBERS
               value: {{ include "gsf-core.members" . }}
             - name: SPRING_KAFKA_PROPERTIES_SASL_MECHANISM
