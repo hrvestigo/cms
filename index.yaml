@@ -1,0 +1,14 @@
+apiVersion: v1
+entries:
+  gsf-core:
+  - apiVersion: v2
+    appVersion: 1.10.0
+    created: "2024-05-21T11:26:11.617631039Z"
+    description: Helm chart for gsf-core application
+    digest: 57c56114cc6a51ac471d45d7c2b832be4bc26914712e1d2e0d46c6387447addf
+    name: gsf-core
+    type: application
+    urls:
+    - https://github.com/hrvestigo/cms/releases/download/gsf-core-1.10.0/gsf-core-1.10.0.tgz
+    version: 1.10.0
+generated: "2024-05-21T11:26:11.61764202Z"
